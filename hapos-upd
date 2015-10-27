@@ -24,7 +24,7 @@ DEBUG=0
 KEEP_TEMP=0
 OCSP_URL=""
 OCSP_HOST=""
-
+VERIFY=1
 TMP=""
 
 function Quit() {
@@ -153,6 +153,8 @@ Options:
                          file) is used (useful for OCSP responses 
                          that don't include the signer certificate).
 
+      --noverify       : Do not verify OCSP response.
+
  -h, --help            : this help."
 }
 
@@ -182,6 +184,10 @@ do
 
         -g|--good-only)
             GOOD_ONLY=1
+            ;;
+
+        --noverify)
+            VERIFY=0
             ;;
 
         -l|--syslog)
@@ -389,7 +395,6 @@ else
     do
         # check fingerprint of current and EE certificates
         FP="`$OPENSSL_BIN x509 -fingerprint -noout -in $TMP/chain-$c.pem`"
-
         if [ $? -ne 0 -o -z "$FP" ]; then
             Error 1 "can't obtain the fingerprint of the certificate n. $c in the bundle"
         else
@@ -429,12 +434,16 @@ if [ $? -ne 0 ]; then
 fi
 
 # process the OCSP response
+VERIFYOPT=""
+if [ $VERIFY -eq 0 ]; then
+    VERIFYOPT="-noverify"
+fi
 if [ -z "$VAFILE" ]; then
-    $OPENSSL_BIN ocsp -issuer $TMP/chain.pem -cert $TMP/ee.pem \
+    $OPENSSL_BIN ocsp $VERIFYOPT -issuer $TMP/chain.pem -cert $TMP/ee.pem \
         -respin $TMP/ocsp.der -no_nonce -CAfile $TMP/chain.pem \
         -out $TMP/ocsp.txt &>>$TMP/ocsp-verify.txt
 else
-    $OPENSSL_BIN ocsp -issuer $TMP/chain.pem -cert $TMP/ee.pem \
+    $OPENSSL_BIN ocsp $VERIFYOPT -issuer $TMP/chain.pem -cert $TMP/ee.pem \
         -respin $TMP/ocsp.der -no_nonce -CAfile $TMP/chain.pem \
         -VAfile $VAFILE \
         -out $TMP/ocsp.txt &>>$TMP/ocsp-verify.txt
@@ -444,17 +453,19 @@ if [ $? -ne 0 ]; then
     Error 1 "can't receive OCSP response"
 fi
 
-Debug "OCSP response verification results: `cat $TMP/ocsp-verify.txt`"
+if [ $VERIFY -eq 1 ]; then
+    Debug "OCSP response verification results: `cat $TMP/ocsp-verify.txt`"
 
-cat $TMP/ocsp-verify.txt | grep "Response verify OK" &>>$TMP/log
+    cat $TMP/ocsp-verify.txt | grep "Response verify OK" &>>$TMP/log
 
-if [ $? -ne 0 ]; then
-    grep "signer certificate not found" $TMP/ocsp-verify.txt &>/dev/null
+    if [ $? -ne 0 ]; then
+        grep "signer certificate not found" $TMP/ocsp-verify.txt &>/dev/null
 
-    if [ $? -eq 0 ]; then
-        Error 4 "OCSP response verification failure: signer certificate not found; try with '--VAfile -' or '--VAfile OCSP-response-signing-certificate-file' arguments"
-    else
-        Error 4 "OCSP response verification failure."
+        if [ $? -eq 0 ]; then
+            Error 4 "OCSP response verification failure: signer certificate not found; try with '--VAfile -' or '--VAfile OCSP-response-signing-certificate-file' arguments"
+        else
+            Error 4 "OCSP response verification failure."
+        fi
     fi
 fi
 
