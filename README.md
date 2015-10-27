@@ -35,7 +35,8 @@ Options:
 
  -d, --debug           : don't do anything, print debug messages only.
 
-     --keep-temp       : keep temporary directory (debug purposes)
+     --keep-temp       : keep temporary directory after exiting (for
+                         debug purposes).
 
  -g, --good-only       : do not update haproxy if OCSP response
                          certificate status value is not 'good'.
@@ -68,6 +69,8 @@ Options:
                          from the certificate's bundle (or .issuer
                          file) is used (useful for OCSP responses
                          that don't include the signer certificate).
+
+      --noverify       : Do not verify OCSP response.
 
  -h, --help            : this help.
 ```
