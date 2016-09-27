@@ -72,6 +72,8 @@ Options:
 
       --noverify       : Do not verify OCSP response.
 
+ -S, --skip-update     : Do not notify haproxy of the new OCSP response.
+
  -h, --help            : this help.
 ```
 
