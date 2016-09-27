@@ -156,6 +156,8 @@ Options:
 
       --noverify       : Do not verify OCSP response.
 
+ -S, --skip-update     : Do not notify haproxy of the new OCSP response.
+
  -h, --help            : this help."
 }
 
@@ -515,18 +517,28 @@ if [ $DEBUG -eq 0 ]; then
 
     if [ $SKIP_UPDATE -eq 0 ]; then
         if [ $ISNEW -eq 1 ]; then
+            # no .ocsp file found, maybe it's an initial run
+            Debug "Reloading haproxy."
+
             service haproxy reload
+
+            if [ $? -ne 0 ]; then
+                Error 5 "can't reload haproxy with 'service haproxy reload'"
+            fi
         else
-        # update haproxy via local UNIX socket
+            # update haproxy via local UNIX socket
+            Debug "Updating haproxy."
+
             echo "set ssl ocsp-response `base64 -w 0 $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>$TMP/log
+
+            if [ $? -ne 0 ]; then
+                Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket"
+            fi
         fi
     else
         Debug "Not notifying haproxy because skip-update is set."
     fi
 
-    if [ $? -ne 0 ]; then
-        Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket"
-    fi
 else
     Debug "Debug mode: haproxy update skipped."
 fi
