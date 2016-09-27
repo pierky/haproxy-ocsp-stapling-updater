@@ -26,6 +26,7 @@ OCSP_URL=""
 OCSP_HOST=""
 VERIFY=1
 TMP=""
+SKIP_UPDATE=0
 
 function Quit() {
     if [ $KEEP_TEMP -eq 0 ]; then
@@ -245,6 +246,10 @@ do
             shift
             ;;
 
+        -S|--skip-update)
+            SKIP_UPDATE=1
+            ;;
+
         *)
             Error 9 "unknown option: $1"
     esac
@@ -273,7 +278,9 @@ fi
 # CURRENT RESPONSE EXPIRED?
 # ----------------------------------
 
+ISNEW=1
 if [ -e $CERT.ocsp ]; then
+    ISNEW=0
     Debug "An OCSP response already exists: checking its expiration."
 
     $OPENSSL_BIN ocsp -respin $CERT.ocsp -text -noverify | \
@@ -506,8 +513,16 @@ if [ $DEBUG -eq 0 ]; then
         fi
     fi
 
-    # update haproxy via local UNIX socket
-    echo "set ssl ocsp-response `base64 -w 0 $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>$TMP/log
+    if [ $SKIP_UPDATE -eq 0 ]; then
+        if [ $ISNEW -eq 1 ]; then
+            service haproxy reload
+        else
+        # update haproxy via local UNIX socket
+            echo "set ssl ocsp-response `base64 -w 0 $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>$TMP/log
+        fi
+    else
+        Debug "Not notifying haproxy because skip-update is set."
+    fi
 
     if [ $? -ne 0 ]; then
         Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket"
