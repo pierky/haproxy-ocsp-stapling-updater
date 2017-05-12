@@ -7,11 +7,14 @@
 
 set -o nounset
 
-VERSION="0.4.0"
+VERSION="0.4.1-pre1"
 
 PROGNAME="hapos-upd"
 
-OPENSSL_BIN="openssl"
+if [ -z ${OPENSSL_BIN+x} ]; then
+    OPENSSL_BIN="openssl"
+fi
+
 SOCAT_BIN="socat"
 
 CERT=""
@@ -434,9 +437,19 @@ fi
 # ----------------------------------
 
 # query the OCSP server and save its response
-$OPENSSL_BIN ocsp -issuer $TMP/chain.pem -cert $TMP/ee.pem \
-    -respout $TMP/ocsp.der -noverify \
-    -no_nonce -url $OCSP_URL -header "Host=$OCSP_HOST" &>>$TMP/log
+
+$OPENSSL_BIN version | grep "OpenSSL 1.0" &>/dev/null
+if [ $? -eq 0 ]; then
+    # OpenSSL 1.0.x
+
+    $OPENSSL_BIN ocsp -issuer $TMP/chain.pem -cert $TMP/ee.pem \
+        -respout $TMP/ocsp.der -noverify \
+        -no_nonce -url $OCSP_URL -header "Host" "$OCSP_HOST" &>>$TMP/log
+else
+    $OPENSSL_BIN ocsp -issuer $TMP/chain.pem -cert $TMP/ee.pem \
+        -respout $TMP/ocsp.der -noverify \
+        -no_nonce -url $OCSP_URL -header "Host=$OCSP_HOST" &>>$TMP/log
+fi
 
 if [ $? -ne 0 ]; then
     Error 1 "can't receive the OCSP server response"
