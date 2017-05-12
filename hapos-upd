@@ -436,7 +436,7 @@ fi
 # query the OCSP server and save its response
 $OPENSSL_BIN ocsp -issuer $TMP/chain.pem -cert $TMP/ee.pem \
     -respout $TMP/ocsp.der -noverify \
-    -no_nonce -url $OCSP_URL -header "Host" "$OCSP_HOST" &>>$TMP/log
+    -no_nonce -url $OCSP_URL -header "Host=$OCSP_HOST" &>>$TMP/log
 
 if [ $? -ne 0 ]; then
     Error 1 "can't receive the OCSP server response"
