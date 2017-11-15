@@ -7,7 +7,7 @@
 
 set -o nounset
 
-VERSION="0.4.1-pre1"
+VERSION="0.5.0"
 
 PROGNAME="hapos-upd"
 
@@ -20,7 +20,7 @@ SOCAT_BIN="socat"
 CERT=""
 VAFILE=""
 HAPROXY_ADMIN_SOCKET_DEFAULT="/run/haproxy/admin.sock"
-HAPROXY_ADMIN_SOCKET="$HAPROXY_ADMIN_SOCKET_DEFAULT"
+HAPROXY_ADMIN_SOCKETS="$HAPROXY_ADMIN_SOCKET_DEFAULT"
 GOOD_ONLY=0
 SYSLOG_PRIO=""
 DEBUG=0
@@ -153,6 +153,10 @@ Options:
                          Feel free to implement other mechanisms as 
                          needed! The right section in the code is 
                          \"UPDATE HAPROXY\", at the end of the script.
+                         To update multiple instances of haproxy using
+                         more than one admin socket, pass the list of
+                         socket files to the --socket argument:
+                         --socket \"file1 file2 file3\".
  
  -v, --VAfile file     : same as the openssl ocsp -VAfile option 
                          with 'file' as argument. For more details: 
@@ -256,7 +260,7 @@ do
             if [ $# -le 1 ]; then
                 Error 9 "mandatory value is missing for $1 argument"
             fi
-            HAPROXY_ADMIN_SOCKET="$2"
+            HAPROXY_ADMIN_SOCKETS="$2"
             shift
             ;;
 
@@ -551,11 +555,29 @@ if [ $DEBUG -eq 0 ]; then
             # update haproxy via local UNIX socket
             Debug "Updating haproxy."
 
-            echo "set ssl ocsp-response `base64 -w 0 $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>$TMP/log
+            HAPROXY_ADMIN_SOCKET_IDX=0
 
-            if [ $? -ne 0 ]; then
-                Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket"
-            fi
+            for HAPROXY_ADMIN_SOCKET in $HAPROXY_ADMIN_SOCKETS;
+            do
+                Debug "Updating $HAPROXY_ADMIN_SOCKET socket."
+
+                HAPROXY_ADMIN_SOCKET_OUTPUT_FILE="update_haproxy_socket.$HAPROXY_ADMIN_SOCKET_IDX"
+
+                echo "set ssl ocsp-response `base64 -w 0 $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>$TMP/$HAPROXY_ADMIN_SOCKET_OUTPUT_FILE
+
+                if [ $? -ne 0 ]; then
+                    Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket: socat returned $?"
+                fi
+
+                cat $TMP/$HAPROXY_ADMIN_SOCKET_OUTPUT_FILE >>$TMP/log
+
+                cat $TMP/$HAPROXY_ADMIN_SOCKET_OUTPUT_FILE | grep "OCSP Response updated" &>/dev/null
+                if [ $? -ne 0 ]; then
+                    Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket: 'OCSP Response updated!' not found in socat output"
+                fi
+
+                HAPROXY_ADMIN_SOCKET_IDX="`expr $HAPROXY_ADMIN_SOCKET_IDX + 1`"
+            done
         fi
     else
         Debug "Not notifying haproxy because skip-update is set."
