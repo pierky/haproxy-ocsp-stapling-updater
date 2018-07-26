@@ -389,8 +389,8 @@ else
     Debug "EE certificate's fingerprint: $FP_EE"
 
     # get BEGIN CERTIFICATE and END CERTIFICATE separators
-    PEM_BEGIN_CERT="`head $TMP/ee.pem -n 1`"
-    PEM_END_CERT="`tail $TMP/ee.pem -n 1`"
+    PEM_BEGIN_CERT="`head -n 1 $TMP/ee.pem`"
+    PEM_END_CERT="`tail -n 1 $TMP/ee.pem`"
 
     # get number of certificates in the bundle file
     NUM_OF_CERTS=`cat $CERT | grep -e "$PEM_BEGIN_CERT" | wc -l`
