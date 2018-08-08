@@ -551,7 +551,7 @@ if [ $DEBUG -eq 0 ]; then
             # update haproxy via local UNIX socket
             Debug "Updating haproxy."
 
-            echo "set ssl ocsp-response `base64 -w 0 $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>$TMP/log
+            echo "set ssl ocsp-response `$OPENSSL_BIN enc -base64 -A -in $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>$TMP/log
 
             if [ $? -ne 0 ]; then
                 Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket"
