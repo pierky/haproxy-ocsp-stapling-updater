@@ -174,7 +174,7 @@ Options:
 
 trap Trap INT TERM
 
-TMP="`mktemp -d -q -t $PROGNAME.XXXXXXXXXX`"
+TMP="$(mktemp -d -q -t $PROGNAME.XXXXXXXXXX)"
 
 # COMMAND LINE PROCESSING
 # ----------------------------------
@@ -304,14 +304,14 @@ if [ -e "${CERT}".ocsp ]; then
         grep "Next Update:" &>>"${TMP}"/log
 
     if [ $? -eq 0 ]; then
-        CURR_EXP=`$OPENSSL_BIN ocsp -respin "${CERT}".ocsp -text -noverify | grep "Next Update:" | cut -d ':' -f 2-`
-        CURR_EXP_EPOCH=`date --date="${CURR_EXP}" +%s`
+        CURR_EXP=$($OPENSSL_BIN ocsp -respin "${CERT}".ocsp -text -noverify | grep "Next Update:" | cut -d ':' -f 2-)
+        CURR_EXP_EPOCH=$(date --date="${CURR_EXP}" +%s)
 
         if [ $? -ne 0 ]; then
             Error 3 "can't parse Next Update from current OCSP response"
         fi
 
-        if [ "${CURR_EXP_EPOCH}" -lt `date +%s` ]; then
+        if [ "${CURR_EXP_EPOCH}" -lt $(date +%s) ]; then
             Debug "Current OCSP response expiration: ${CURR_EXP} - expired"
             LogError "current OCSP response is expired: please consider running this script more frequently"
         else
@@ -332,7 +332,7 @@ fi
 
 # get OCSP server URL
 if [ -z "${OCSP_URL}" ]; then
-    OCSP_URL="`$OPENSSL_BIN x509 -in "${TMP}"/ee.pem -ocsp_uri -noout`"
+    OCSP_URL="$($OPENSSL_BIN x509 -in "${TMP}"/ee.pem -ocsp_uri -noout)"
 
     if [ $? -ne 0 ]; then
         Error 1 "can't obtain OCSP server URL from ${CERT}"
@@ -356,7 +356,7 @@ fi
 
 # get OCSP server URL host name
 if [ -z "$OCSP_HOST" ]; then
-    OCSP_HOST="`echo "${OCSP_URL}" | egrep -i "(http://|https://)" | cut -d'/' -f 3`"
+    OCSP_HOST="$(echo "${OCSP_URL}" | egrep -i "(http://|https://)" | cut -d'/' -f 3)"
 
     if [ $? -ne 0 ] || [ -z "$OCSP_HOST" ]; then
         Error 3 "can't extract hostname from OCSP server URL ${OCSP_URL}"
@@ -383,7 +383,7 @@ else
     Debug "Extracting chain from certificates bundle"
 
     # get EE certificate's fingerprint
-    FP_EE="`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/ee.pem`"
+    FP_EE="$($OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/ee.pem)"
 
     if [ $? -ne 0 ] || [ -z "$FP_EE" ]; then
         Error 1 "can't obtain EE certificate's fingerprint"
@@ -392,11 +392,11 @@ else
     Debug "EE certificate's fingerprint: $FP_EE"
 
     # get BEGIN CERTIFICATE and END CERTIFICATE separators
-    PEM_BEGIN_CERT="`head "${TMP}"/ee.pem -n 1`"
-    PEM_END_CERT="`tail "${TMP}"/ee.pem -n 1`"
+    PEM_BEGIN_CERT="$(head "${TMP}"/ee.pem -n 1)"
+    PEM_END_CERT="$(tail "${TMP}"/ee.pem -n 1)"
 
     # get number of certificates in the bundle file
-    NUM_OF_CERTS=`cat "${CERT}" | grep -e "$PEM_BEGIN_CERT" | wc -l`
+    NUM_OF_CERTS=$(cat "${CERT}" | grep -e "$PEM_BEGIN_CERT" | wc -l)
 
     if [ $NUM_OF_CERTS -le 1 ]; then
         Error 3 "can't obtain the number of certificates in the chain"
@@ -415,10 +415,10 @@ else
 
     # for each certificate that is extracted from the bundle check if 
     # it's the EE certificate, otherwise uses it to build the chain file
-    for c in `seq 1 $NUM_OF_CERTS`;
+    for c in $(seq 1 $NUM_OF_CERTS);
     do
         # check fingerprint of current and EE certificates
-        FP=`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/chain-"${c}".pem`
+        FP=$($OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/chain-"${c}".pem)
         if [ $? -ne 0 ] || [ -z "$FP" ]; then
             Error 1 "can't obtain the fingerprint of the certificate n. ${c} in the bundle"
         else
@@ -450,7 +450,7 @@ fi
 
 # query the OCSP server and save its response
 
-OPENSSL_VERSION=`$OPENSSL_BIN version | sed -rn 's/^OpenSSL\s([0-9]\.[0-9]).*/\1/p'`
+OPENSSL_VERSION=$($OPENSSL_BIN version | sed -rn 's/^OpenSSL\s([0-9]\.[0-9]).*/\1/p')
 
 case $OPENSSL_VERSION in
         '0.9')
@@ -495,7 +495,7 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ $VERIFY -eq 1 ]; then
-    Debug "OCSP response verification results: `cat "${TMP}"/ocsp-verify.txt`"
+    Debug "OCSP response verification results: $(cat "${TMP}"/ocsp-verify.txt)"
 
     cat "${TMP}"/ocsp-verify.txt | grep "Response verify OK" &>>"${TMP}"/log
 
@@ -510,7 +510,7 @@ if [ $VERIFY -eq 1 ]; then
     fi
 fi
 
-Debug "OCSP response: `cat "${TMP}"/ocsp.txt`"
+Debug "OCSP response: $(cat "${TMP}"/ocsp.txt)"
 
 if [ $GOOD_ONLY -eq 1 ]; then
     cat "${TMP}"/ocsp.txt | head -n 1 | grep ": good" &>>"${TMP}"/log
@@ -561,7 +561,7 @@ if [ ${DEBUG} -eq 0 ]; then
             # update haproxy via local UNIX socket
             Debug "Updating haproxy."
 
-            echo "set ssl ocsp-response `base64 -w 0 "${TMP}"/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>"${TMP}"/log
+            echo "set ssl ocsp-response $(base64 -w 0 "${TMP}"/ocsp.der)" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>"${TMP}"/log
 
             if [ $? -ne 0 ]; then
                 Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket"
