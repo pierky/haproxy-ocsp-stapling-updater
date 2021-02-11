@@ -328,24 +328,24 @@ if [ $? -ne 0 ]; then
 fi
 
 # get OCSP server URL
-if [ -z "$OCSP_URL" ]; then
+if [ -z "${OCSP_URL}" ]; then
     OCSP_URL="`$OPENSSL_BIN x509 -in "${TMP}"/ee.pem -ocsp_uri -noout`"
 
     if [ $? -ne 0 ]; then
         Error 1 "can't obtain OCSP server URL from $CERT"
     fi
 
-    if [ -z "$OCSP_URL" ]; then
+    if [ -z "${OCSP_URL}" ]; then
         Error 2 "OCSP server URL not found in the EE certificate"
     fi
 
-    Debug "OCSP server URL found: $OCSP_URL"
+    Debug "OCSP server URL found: ${OCSP_URL}"
 else
-    Debug "Using OCSP server URL from command line: $OCSP_URL"
+    Debug "Using OCSP server URL from command line: ${OCSP_URL}"
 fi
 
 # check OCSP server URL format (http:// or https://)
-echo "$OCSP_URL" | egrep -i "(http://|https://)" &>/dev/null
+echo "${OCSP_URL}" | egrep -i "(http://|https://)" &>/dev/null
 
 if [ $? -ne 0 ]; then
     Error 3 "OCSP server URL not in http[s]:// format"
@@ -353,10 +353,10 @@ fi
 
 # get OCSP server URL host name
 if [ -z "$OCSP_HOST" ]; then
-    OCSP_HOST="`echo "$OCSP_URL" | egrep -i "(http://|https://)" | cut -d'/' -f 3`"
+    OCSP_HOST="`echo "${OCSP_URL}" | egrep -i "(http://|https://)" | cut -d'/' -f 3`"
 
     if [ $? -ne 0 -o -z "$OCSP_HOST" ]; then
-        Error 3 "can't extract hostname from OCSP server URL $OCSP_URL"
+        Error 3 "can't extract hostname from OCSP server URL ${OCSP_URL}"
     fi
 
     Debug "OCSP server hostname: $OCSP_HOST"
@@ -453,17 +453,17 @@ case $OPENSSL_VERSION in
         '0.9')
                 $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
                         -respout "${TMP}"/ocsp.der -noverify \
-                        -no_nonce -url $OCSP_URL -header "Host=$OCSP_HOST" &>>"${TMP}"/log
+                        -no_nonce -url "${OCSP_URL}" -header "Host=$OCSP_HOST" &>>"${TMP}"/log
                 ;;
         '1.0')
                 $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
                         -respout "${TMP}"/ocsp.der -noverify \
-                        -no_nonce -url $OCSP_URL -header "Host" "$OCSP_HOST" &>>"${TMP}"/log
+                        -no_nonce -url "${OCSP_URL}" -header "Host" "$OCSP_HOST" &>>"${TMP}"/log
                 ;;
         *)
                 $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
                         -respout "${TMP}"/ocsp.der -noverify \
-                        -no_nonce -url $OCSP_URL &>>"${TMP}"/log
+                        -no_nonce -url "${OCSP_URL}" &>>"${TMP}"/log
                 ;;
 esac
 
