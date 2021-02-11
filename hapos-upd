@@ -23,7 +23,7 @@ HAPROXY_ADMIN_SOCKET_DEFAULT="/run/haproxy/admin.sock"
 HAPROXY_ADMIN_SOCKET="$HAPROXY_ADMIN_SOCKET_DEFAULT"
 GOOD_ONLY=0
 SYSLOG_PRIO=""
-DEBUG=0
+typeset -i DEBUG=0
 KEEP_TEMP=0
 OCSP_URL=""
 OCSP_HOST=""
@@ -73,7 +73,7 @@ function Error() {
 }
 
 function Debug() {
-    if [ $DEBUG -eq 1 ]; then
+    if [ ${DEBUG} -eq 1 ]; then
         echo "${@}"
     fi
     echo "${@}" >>"${TMP}"/log
@@ -530,7 +530,7 @@ fi
 #   - the OCSP response has been verified against the chain or 
 #       the --VAfile
 
-if [ $DEBUG -eq 0 ]; then
+if [ ${DEBUG} -eq 0 ]; then
     # update .ocsp and .issuer files
 
     cp "${TMP}"/ocsp.der "${CERT}".ocsp &>>"${TMP}"/log
