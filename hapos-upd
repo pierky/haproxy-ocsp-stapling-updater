@@ -39,6 +39,7 @@ function Quit() {
             rm -r "${TMP}" &>/dev/null
         fi
     fi
+    # shellcheck disable=SC2086
     exit ${err}
 }
 
@@ -57,6 +58,7 @@ function LogError() {
 function Error() {
     local -i err=$1
 
+    # shellcheck disable=SC2086
     if [ ${err} -eq 9 ]; then
         MSG="Error: $2"
     else
@@ -65,10 +67,12 @@ function Error() {
 
     LogError "$MSG"
 
+    # shellcheck disable=SC2086
     if [ ${err} -eq 9 ]; then
         echo "Run $PROGNAME -h for help" >&2
     fi
 
+    # shellcheck disable=SC2086
     Quit ${err}
 }
 
