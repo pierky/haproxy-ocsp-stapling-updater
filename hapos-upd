@@ -396,7 +396,7 @@ else
     PEM_END_CERT="$(tail "${TMP}"/ee.pem -n 1)"
 
     # get number of certificates in the bundle file
-    NUM_OF_CERTS=$(cat "${CERT}" | grep -e "$PEM_BEGIN_CERT" | wc -l)
+    NUM_OF_CERTS=$(cat "${CERT}" | grep -ce "$PEM_BEGIN_CERT")
 
     if [ $NUM_OF_CERTS -le 1 ]; then
         Error 3 "can't obtain the number of certificates in the chain"
