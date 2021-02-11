@@ -358,7 +358,7 @@ fi
 if [ -z "$OCSP_HOST" ]; then
     OCSP_HOST="`echo "${OCSP_URL}" | egrep -i "(http://|https://)" | cut -d'/' -f 3`"
 
-    if [ $? -ne 0 -o -z "$OCSP_HOST" ]; then
+    if [ $? -ne 0 ] || [ -z "$OCSP_HOST" ]; then
         Error 3 "can't extract hostname from OCSP server URL ${OCSP_URL}"
     fi
 
@@ -385,7 +385,7 @@ else
     # get EE certificate's fingerprint
     FP_EE="`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/ee.pem`"
 
-    if [ $? -ne 0 -o -z "$FP_EE" ]; then
+    if [ $? -ne 0 ] || [ -z "$FP_EE" ]; then
         Error 1 "can't obtain EE certificate's fingerprint"
     fi
 
@@ -419,7 +419,7 @@ else
     do
         # check fingerprint of current and EE certificates
         FP=`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/chain-"${c}".pem`
-        if [ $? -ne 0 -o -z "$FP" ]; then
+        if [ $? -ne 0 ] || [ -z "$FP" ]; then
             Error 1 "can't obtain the fingerprint of the certificate n. ${c} in the bundle"
         else
             if [ ! "$FP" == "$FP_EE" ]; then
