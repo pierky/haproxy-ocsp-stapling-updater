@@ -250,11 +250,11 @@ do
                 Error 9 "mandatory value is missing for $1 argument"
             fi
             VAFILE="$2"
-            if [ "$VAFILE" == "-" ]; then
+            if [ "${VAFILE}" == "-" ]; then
                 VAFILE="${TMP}/chain.pem"
             else
-                if [ ! -e "$VAFILE" ]; then
-                    Error 9 "VAfile does not exists: $VAFILE"
+                if [ ! -e "${VAFILE}" ]; then
+                    Error 9 "VAfile does not exists: ${VAFILE}"
                 fi
             fi
             shift
@@ -486,14 +486,14 @@ VERIFYOPT=""
 if [ $VERIFY -eq 0 ]; then
     VERIFYOPT="-noverify"
 fi
-if [ -z "$VAFILE" ]; then
+if [ -z "${VAFILE}" ]; then
     $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
         -respin "${TMP}"/ocsp.der -no_nonce -CAfile "${TMP}"/chain.pem \
         -out "${TMP}"/ocsp.txt &>>"${TMP}"/ocsp-verify.txt
 else
     $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
         -respin "${TMP}"/ocsp.der -no_nonce -CAfile "${TMP}"/chain.pem \
-        -VAfile $VAFILE \
+        -VAfile "${VAFILE}" \
         -out "${TMP}"/ocsp.txt &>>"${TMP}"/ocsp-verify.txt
 fi
 
