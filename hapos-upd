@@ -311,7 +311,7 @@ if [ -e "${CERT}".ocsp ]; then
             Error 3 "can't parse Next Update from current OCSP response"
         fi
 
-        if [ "${CURR_EXP_EPOCH}" -lt $(date +%s) ]; then
+        if [ "${CURR_EXP_EPOCH}" -lt "$(date +%s)" ]; then
             Debug "Current OCSP response expiration: ${CURR_EXP} - expired"
             LogError "current OCSP response is expired: please consider running this script more frequently"
         else
