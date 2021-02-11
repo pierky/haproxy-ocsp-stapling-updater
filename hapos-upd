@@ -34,8 +34,8 @@ PARTIAL_CHAIN=""
 
 function Quit() {
     if [ $KEEP_TEMP -eq 0 ]; then
-        if [ -n "$TMP" ]; then
-            rm -r $TMP &>/dev/null
+        if [ -n "${TMP}" ]; then
+            rm -r "${TMP}" &>/dev/null
         fi
     fi
     exit $1
@@ -50,7 +50,7 @@ function LogError() {
         logger -p "$SYSLOG_PRIO" -s -- "$PROGNAME - $MSG"
     fi
 
-    echo "$MSG" >>$TMP/log
+    echo "$MSG" >>"${TMP}"/log
 }
 
 function Error() {
@@ -73,7 +73,7 @@ function Debug() {
     if [ $DEBUG -eq 1 ]; then
         echo "$1"
     fi
-    echo "$1" >>$TMP/log
+    echo "$1" >>"${TMP}"/log
 }
 
 function Trap() {
@@ -243,7 +243,7 @@ do
             fi
             VAFILE="$2"
             if [ "$VAFILE" == "-" ]; then
-                VAFILE="$TMP/chain.pem"
+                VAFILE="${TMP}/chain.pem"
             else
                 if [ ! -e "$VAFILE" ]; then
                     Error 9 "VAfile does not exists: $VAFILE"
@@ -271,15 +271,15 @@ do
     shift
 done
 
-Debug "Temporary directory: $TMP"
+Debug "Temporary directory: ${TMP}"
 
-$OPENSSL_BIN version | grep OpenSSL &>>$TMP/log
+$OPENSSL_BIN version | grep OpenSSL &>>"${TMP}"/log
 
 if [ $? -ne 0 ]; then
     Error 9 "openssl binary not found; adjust OPENSSL_BIN variable in the script"
 fi
 
-$SOCAT_BIN -V | grep socat &>>$TMP/log
+$SOCAT_BIN -V | grep socat &>>"${TMP}"/log
 
 if [ $? -ne 0 ]; then
     Error 9 "socat binary not found; adjust SOCAT_BIN variable in the script"
@@ -298,7 +298,7 @@ if [ -e $CERT.ocsp ]; then
     Debug "An OCSP response already exists: checking its expiration."
 
     $OPENSSL_BIN ocsp -respin $CERT.ocsp -text -noverify | \
-        grep "Next Update:" &>>$TMP/log
+        grep "Next Update:" &>>"${TMP}"/log
 
     if [ $? -eq 0 ]; then
         CURR_EXP=`$OPENSSL_BIN ocsp -respin $CERT.ocsp -text -noverify | grep "Next Update:" | cut -d ':' -f 2-`
@@ -321,7 +321,7 @@ fi
 # ----------------------------------
 
 # extract EE certificate
-$OPENSSL_BIN x509 -in $CERT -outform PEM -out $TMP/ee.pem &>>$TMP/log
+$OPENSSL_BIN x509 -in $CERT -outform PEM -out "${TMP}"/ee.pem &>>"${TMP}"/log
 
 if [ $? -ne 0 ]; then
     Error 1 "can't extract EE certificate from $CERT"
@@ -329,7 +329,7 @@ fi
 
 # get OCSP server URL
 if [ -z "$OCSP_URL" ]; then
-    OCSP_URL="`$OPENSSL_BIN x509 -in $TMP/ee.pem -ocsp_uri -noout`"
+    OCSP_URL="`$OPENSSL_BIN x509 -in "${TMP}"/ee.pem -ocsp_uri -noout`"
 
     if [ $? -ne 0 ]; then
         Error 1 "can't obtain OCSP server URL from $CERT"
@@ -371,7 +371,7 @@ if [ -e $CERT.issuer ]; then
     Debug "Using existing chain ($CERT.issuer)"
 
     # copy .issuer file to temporary chain.pem
-    cp $CERT.issuer $TMP/chain.pem &>>$TMP/log
+    cp $CERT.issuer "${TMP}"/chain.pem &>>"${TMP}"/log
 
     if [ $? -ne 0 ]; then
         Error 3 "can't copy current chain from $CERT.issuer"
@@ -380,7 +380,7 @@ else
     Debug "Extracting chain from certificates bundle"
 
     # get EE certificate's fingerprint
-    FP_EE="`$OPENSSL_BIN x509 -fingerprint -noout -in $TMP/ee.pem`"
+    FP_EE="`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/ee.pem`"
 
     if [ $? -ne 0 -o -z "$FP_EE" ]; then
         Error 1 "can't obtain EE certificate's fingerprint"
@@ -389,8 +389,8 @@ else
     Debug "EE certificate's fingerprint: $FP_EE"
 
     # get BEGIN CERTIFICATE and END CERTIFICATE separators
-    PEM_BEGIN_CERT="`head $TMP/ee.pem -n 1`"
-    PEM_END_CERT="`tail $TMP/ee.pem -n 1`"
+    PEM_BEGIN_CERT="`head "${TMP}"/ee.pem -n 1`"
+    PEM_END_CERT="`tail "${TMP}"/ee.pem -n 1`"
 
     # get number of certificates in the bundle file
     NUM_OF_CERTS=`cat $CERT | grep -e "$PEM_BEGIN_CERT" | wc -l`
@@ -401,10 +401,10 @@ else
 
     Debug "$NUM_OF_CERTS certificates found in the bundle"
 
-    # save each certificate in the bundle into $TMP/chain-X.pem 
+    # save each certificate in the bundle into "${TMP}"/chain-X.pem 
     cat $CERT | \
         sed -n -e "/$PEM_BEGIN_CERT/,/$PEM_END_CERT/p" | \
-        awk "/$PEM_BEGIN_CERT/{x=\"$TMP/chain-\" ++i \".pem\";}{print > x;}" &>>$TMP/log
+        awk "/$PEM_BEGIN_CERT/{x=\"${TMP}/chain-\" ++i \".pem\";}{print > x;}" &>>"${TMP}"/log
 
     if [ $? -ne 0 ]; then
         Error 3 "can't extract certificates from bundle"
@@ -415,7 +415,7 @@ else
     for c in `seq 1 $NUM_OF_CERTS`;
     do
         # check fingerprint of current and EE certificates
-        FP="`$OPENSSL_BIN x509 -fingerprint -noout -in $TMP/chain-$c.pem`"
+        FP="`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/chain-$c.pem`"
         if [ $? -ne 0 -o -z "$FP" ]; then
             Error 1 "can't obtain the fingerprint of the certificate n. $c in the bundle"
         else
@@ -423,7 +423,7 @@ else
                 Debug "Bundle certificate n. $c fingerprint: $FP - it's part of the chain"
 
                 # current certificate is not the same as the EE; append to the chain
-                cat $TMP/chain-$c.pem >> $TMP/chain.pem
+                cat "${TMP}"/chain-$c.pem >> "${TMP}"/chain.pem
             else
                 Debug "Bundle certificate n. $c fingerprint: $FP - EE certificate"
             fi
@@ -432,7 +432,7 @@ else
 fi
 
 # check if the EE certificate validates against the chain
-$OPENSSL_BIN verify $PARTIAL_CHAIN -CAfile $TMP/chain.pem $TMP/ee.pem &>>$TMP/log
+$OPENSSL_BIN verify $PARTIAL_CHAIN -CAfile "${TMP}"/chain.pem "${TMP}"/ee.pem &>>"${TMP}"/log
 
 if [ $? -ne 0 ]; then
     if [ -e $CERT.issuer ]; then
@@ -451,19 +451,19 @@ OPENSSL_VERSION=`$OPENSSL_BIN version | sed -rn 's/^OpenSSL\s([0-9]\.[0-9]).*/\1
 
 case $OPENSSL_VERSION in
         '0.9')
-                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer $TMP/chain.pem -cert $TMP/ee.pem \
-                        -respout $TMP/ocsp.der -noverify \
-                        -no_nonce -url $OCSP_URL -header "Host=$OCSP_HOST" &>>$TMP/log
+                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+                        -respout "${TMP}"/ocsp.der -noverify \
+                        -no_nonce -url $OCSP_URL -header "Host=$OCSP_HOST" &>>"${TMP}"/log
                 ;;
         '1.0')
-                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer $TMP/chain.pem -cert $TMP/ee.pem \
-                        -respout $TMP/ocsp.der -noverify \
-                        -no_nonce -url $OCSP_URL -header "Host" "$OCSP_HOST" &>>$TMP/log
+                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+                        -respout "${TMP}"/ocsp.der -noverify \
+                        -no_nonce -url $OCSP_URL -header "Host" "$OCSP_HOST" &>>"${TMP}"/log
                 ;;
         *)
-                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer $TMP/chain.pem -cert $TMP/ee.pem \
-                        -respout $TMP/ocsp.der -noverify \
-                        -no_nonce -url $OCSP_URL &>>$TMP/log
+                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+                        -respout "${TMP}"/ocsp.der -noverify \
+                        -no_nonce -url $OCSP_URL &>>"${TMP}"/log
                 ;;
 esac
 
@@ -477,14 +477,14 @@ if [ $VERIFY -eq 0 ]; then
     VERIFYOPT="-noverify"
 fi
 if [ -z "$VAFILE" ]; then
-    $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer $TMP/chain.pem -cert $TMP/ee.pem \
-        -respin $TMP/ocsp.der -no_nonce -CAfile $TMP/chain.pem \
-        -out $TMP/ocsp.txt &>>$TMP/ocsp-verify.txt
+    $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+        -respin "${TMP}"/ocsp.der -no_nonce -CAfile "${TMP}"/chain.pem \
+        -out "${TMP}"/ocsp.txt &>>"${TMP}"/ocsp-verify.txt
 else
-    $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer $TMP/chain.pem -cert $TMP/ee.pem \
-        -respin $TMP/ocsp.der -no_nonce -CAfile $TMP/chain.pem \
+    $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+        -respin "${TMP}"/ocsp.der -no_nonce -CAfile "${TMP}"/chain.pem \
         -VAfile $VAFILE \
-        -out $TMP/ocsp.txt &>>$TMP/ocsp-verify.txt
+        -out "${TMP}"/ocsp.txt &>>"${TMP}"/ocsp-verify.txt
 fi
 
 if [ $? -ne 0 ]; then
@@ -492,12 +492,12 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ $VERIFY -eq 1 ]; then
-    Debug "OCSP response verification results: `cat $TMP/ocsp-verify.txt`"
+    Debug "OCSP response verification results: `cat "${TMP}"/ocsp-verify.txt`"
 
-    cat $TMP/ocsp-verify.txt | grep "Response verify OK" &>>$TMP/log
+    cat "${TMP}"/ocsp-verify.txt | grep "Response verify OK" &>>"${TMP}"/log
 
     if [ $? -ne 0 ]; then
-        grep "signer certificate not found" $TMP/ocsp-verify.txt &>/dev/null
+        grep "signer certificate not found" "${TMP}"/ocsp-verify.txt &>/dev/null
 
         if [ $? -eq 0 ]; then
             Error 4 "OCSP response verification failure: signer certificate not found; try with '--VAfile -' or '--VAfile OCSP-response-signing-certificate-file' arguments"
@@ -507,10 +507,10 @@ if [ $VERIFY -eq 1 ]; then
     fi
 fi
 
-Debug "OCSP response: `cat $TMP/ocsp.txt`"
+Debug "OCSP response: `cat "${TMP}"/ocsp.txt`"
 
 if [ $GOOD_ONLY -eq 1 ]; then
-    cat $TMP/ocsp.txt | head -n 1 | grep ": good" &>>$TMP/log
+    cat "${TMP}"/ocsp.txt | head -n 1 | grep ": good" &>>"${TMP}"/log
 
     if [ $? -ne 0 ]; then
         Error 4 "OCSP response, certificate status not good"
@@ -521,8 +521,8 @@ fi
 # ----------------------------------
 
 # Status:
-#   - $TMP/ocsp.der contains the OCSP response, DER format
-#   - $TMP/ocsp.txt contains the textual OCSP response as produced
+#   - "${TMP}"/ocsp.der contains the OCSP response, DER format
+#   - "${TMP}"/ocsp.txt contains the textual OCSP response as produced
 #       by openssl
 #   - the OCSP response has been verified against the chain or 
 #       the --VAfile
@@ -530,14 +530,14 @@ fi
 if [ $DEBUG -eq 0 ]; then
     # update .ocsp and .issuer files
 
-    cp $TMP/ocsp.der $CERT.ocsp &>>$TMP/log
+    cp "${TMP}"/ocsp.der $CERT.ocsp &>>"${TMP}"/log
 
     if [ $? -ne 0 ]; then
         Error 5 "can't update $CERT.ocsp file"
     fi
 
     if [ ! -e $CERT.issuer ]; then
-        cp $TMP/chain.pem $CERT.issuer &>>$TMP/log
+        cp "${TMP}"/chain.pem $CERT.issuer &>>"${TMP}"/log
 
         if [ $? -ne 0 ]; then
             Error 5 "can't update $CERT.issuer file"
@@ -558,7 +558,7 @@ if [ $DEBUG -eq 0 ]; then
             # update haproxy via local UNIX socket
             Debug "Updating haproxy."
 
-            echo "set ssl ocsp-response `base64 -w 0 $TMP/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>$TMP/log
+            echo "set ssl ocsp-response `base64 -w 0 "${TMP}"/ocsp.der`" | $SOCAT_BIN stdio $HAPROXY_ADMIN_SOCKET &>>"${TMP}"/log
 
             if [ $? -ne 0 ]; then
                 Error 5 "can't update haproxy ssl ocsp-response using $HAPROXY_ADMIN_SOCKET socket"
