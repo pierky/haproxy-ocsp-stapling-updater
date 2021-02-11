@@ -57,7 +57,7 @@ function Error() {
     if [ $1 -eq 9 ]; then
         MSG="Error: $2"
     else
-        MSG="Error processing '$CERT': $2"
+        MSG="Error processing '${CERT}': $2"
     fi
 
     LogError "$MSG"
@@ -285,7 +285,7 @@ if [ $? -ne 0 ]; then
     Error 9 "socat binary not found; adjust SOCAT_BIN variable in the script"
 fi
 
-if [ -z "$CERT" ]; then
+if [ -z "${CERT}" ]; then
     Error 9 "certificate not provided (--cert argument)"
 fi
 
@@ -293,15 +293,15 @@ fi
 # ----------------------------------
 
 ISNEW=1
-if [ -e $CERT.ocsp ]; then
+if [ -e "${CERT}".ocsp ]; then
     ISNEW=0
     Debug "An OCSP response already exists: checking its expiration."
 
-    $OPENSSL_BIN ocsp -respin $CERT.ocsp -text -noverify | \
+    $OPENSSL_BIN ocsp -respin "${CERT}".ocsp -text -noverify | \
         grep "Next Update:" &>>"${TMP}"/log
 
     if [ $? -eq 0 ]; then
-        CURR_EXP=`$OPENSSL_BIN ocsp -respin $CERT.ocsp -text -noverify | grep "Next Update:" | cut -d ':' -f 2-`
+        CURR_EXP=`$OPENSSL_BIN ocsp -respin "${CERT}".ocsp -text -noverify | grep "Next Update:" | cut -d ':' -f 2-`
         CURR_EXP_EPOCH=`date --date="$CURR_EXP" +%s`
 
         if [ $? -ne 0 ]; then
@@ -321,10 +321,10 @@ fi
 # ----------------------------------
 
 # extract EE certificate
-$OPENSSL_BIN x509 -in $CERT -outform PEM -out "${TMP}"/ee.pem &>>"${TMP}"/log
+$OPENSSL_BIN x509 -in "${CERT}" -outform PEM -out "${TMP}"/ee.pem &>>"${TMP}"/log
 
 if [ $? -ne 0 ]; then
-    Error 1 "can't extract EE certificate from $CERT"
+    Error 1 "can't extract EE certificate from ${CERT}"
 fi
 
 # get OCSP server URL
@@ -332,7 +332,7 @@ if [ -z "${OCSP_URL}" ]; then
     OCSP_URL="`$OPENSSL_BIN x509 -in "${TMP}"/ee.pem -ocsp_uri -noout`"
 
     if [ $? -ne 0 ]; then
-        Error 1 "can't obtain OCSP server URL from $CERT"
+        Error 1 "can't obtain OCSP server URL from ${CERT}"
     fi
 
     if [ -z "${OCSP_URL}" ]; then
@@ -367,14 +367,14 @@ fi
 # EXTRACT CHAIN INFO
 # ----------------------------------
 
-if [ -e $CERT.issuer ]; then
-    Debug "Using existing chain ($CERT.issuer)"
+if [ -e "${CERT}".issuer ]; then
+    Debug "Using existing chain (${CERT}.issuer)"
 
     # copy .issuer file to temporary chain.pem
-    cp $CERT.issuer "${TMP}"/chain.pem &>>"${TMP}"/log
+    cp "${CERT}".issuer "${TMP}"/chain.pem &>>"${TMP}"/log
 
     if [ $? -ne 0 ]; then
-        Error 3 "can't copy current chain from $CERT.issuer"
+        Error 3 "can't copy current chain from ${CERT}.issuer"
     fi
 else
     Debug "Extracting chain from certificates bundle"
@@ -393,7 +393,7 @@ else
     PEM_END_CERT="`tail "${TMP}"/ee.pem -n 1`"
 
     # get number of certificates in the bundle file
-    NUM_OF_CERTS=`cat $CERT | grep -e "$PEM_BEGIN_CERT" | wc -l`
+    NUM_OF_CERTS=`cat "${CERT}" | grep -e "$PEM_BEGIN_CERT" | wc -l`
 
     if [ $NUM_OF_CERTS -le 1 ]; then
         Error 3 "can't obtain the number of certificates in the chain"
@@ -402,7 +402,7 @@ else
     Debug "$NUM_OF_CERTS certificates found in the bundle"
 
     # save each certificate in the bundle into "${TMP}"/chain-X.pem 
-    cat $CERT | \
+    cat "${CERT}" | \
         sed -n -e "/$PEM_BEGIN_CERT/,/$PEM_END_CERT/p" | \
         awk "/$PEM_BEGIN_CERT/{x=\"${TMP}/chain-\" ++i \".pem\";}{print > x;}" &>>"${TMP}"/log
 
@@ -435,8 +435,8 @@ fi
 $OPENSSL_BIN verify $PARTIAL_CHAIN -CAfile "${TMP}"/chain.pem "${TMP}"/ee.pem &>>"${TMP}"/log
 
 if [ $? -ne 0 ]; then
-    if [ -e $CERT.issuer ]; then
-        Error 1 "can't validate the EE certificate against the existing chain; if it has been changed recently consider removing the current $CERT.issuer file and let this script to figure out a new one"
+    if [ -e "${CERT}".issuer ]; then
+        Error 1 "can't validate the EE certificate against the existing chain; if it has been changed recently consider removing the current ${CERT}.issuer file and let this script to figure out a new one"
     else
         Error 1 "can't validate the EE certificate against the extracted chain"
     fi
@@ -530,17 +530,17 @@ fi
 if [ $DEBUG -eq 0 ]; then
     # update .ocsp and .issuer files
 
-    cp "${TMP}"/ocsp.der $CERT.ocsp &>>"${TMP}"/log
+    cp "${TMP}"/ocsp.der "${CERT}".ocsp &>>"${TMP}"/log
 
     if [ $? -ne 0 ]; then
-        Error 5 "can't update $CERT.ocsp file"
+        Error 5 "can't update ${CERT}.ocsp file"
     fi
 
-    if [ ! -e $CERT.issuer ]; then
-        cp "${TMP}"/chain.pem $CERT.issuer &>>"${TMP}"/log
+    if [ ! -e "${CERT}".issuer ]; then
+        cp "${TMP}"/chain.pem "${CERT}".issuer &>>"${TMP}"/log
 
         if [ $? -ne 0 ]; then
-            Error 5 "can't update $CERT.issuer file"
+            Error 5 "can't update ${CERT}.issuer file"
         fi
     fi
 
