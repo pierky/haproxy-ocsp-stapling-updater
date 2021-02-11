@@ -11,7 +11,7 @@ VERSION="0.4.1-pre1"
 
 PROGNAME="hapos-upd"
 
-if [ -z ${OPENSSL_BIN+x} ]; then
+if [ -z "${OPENSSL_BIN+x}" ]; then
     OPENSSL_BIN="openssl"
 fi
 
