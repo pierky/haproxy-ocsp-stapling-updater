@@ -24,6 +24,7 @@ HAPROXY_ADMIN_SOCKET="$HAPROXY_ADMIN_SOCKET_DEFAULT"
 GOOD_ONLY=0
 SYSLOG_PRIO=""
 typeset -i DEBUG=0
+typeset -i NUM_OF_CERTS
 KEEP_TEMP=0
 OCSP_URL=""
 OCSP_HOST=""
@@ -402,6 +403,7 @@ else
     # get number of certificates in the bundle file
     NUM_OF_CERTS=$(cat "${CERT}" | grep -ce "$PEM_BEGIN_CERT")
 
+    # shellcheck disable=SC2086
     if [ $NUM_OF_CERTS -le 1 ]; then
         Error 3 "can't obtain the number of certificates in the chain"
     fi
@@ -419,6 +421,7 @@ else
 
     # for each certificate that is extracted from the bundle check if 
     # it's the EE certificate, otherwise uses it to build the chain file
+    # shellcheck disable=SC2086
     for c in $(seq 1 $NUM_OF_CERTS);
     do
         # check fingerprint of current and EE certificates
