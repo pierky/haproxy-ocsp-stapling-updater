@@ -74,9 +74,9 @@ function Error() {
 
 function Debug() {
     if [ $DEBUG -eq 1 ]; then
-        echo "$1"
+        echo "${@}"
     fi
-    echo "$1" >>"${TMP}"/log
+    echo "${@}" >>"${TMP}"/log
 }
 
 function Trap() {
