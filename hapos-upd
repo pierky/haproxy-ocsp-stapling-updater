@@ -418,17 +418,17 @@ else
     for c in `seq 1 $NUM_OF_CERTS`;
     do
         # check fingerprint of current and EE certificates
-        FP="`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/chain-$c.pem`"
+        FP=`$OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/chain-"${c}".pem`
         if [ $? -ne 0 -o -z "$FP" ]; then
-            Error 1 "can't obtain the fingerprint of the certificate n. $c in the bundle"
+            Error 1 "can't obtain the fingerprint of the certificate n. ${c} in the bundle"
         else
             if [ ! "$FP" == "$FP_EE" ]; then
-                Debug "Bundle certificate n. $c fingerprint: $FP - it's part of the chain"
+                Debug "Bundle certificate n. ${c} fingerprint: $FP - it's part of the chain"
 
                 # current certificate is not the same as the EE; append to the chain
-                cat "${TMP}"/chain-$c.pem >> "${TMP}"/chain.pem
+                cat "${TMP}"/chain-"${c}".pem >> "${TMP}"/chain.pem
             else
-                Debug "Bundle certificate n. $c fingerprint: $FP - EE certificate"
+                Debug "Bundle certificate n. ${c} fingerprint: $FP - EE certificate"
             fi
         fi
     done
