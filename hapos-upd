@@ -382,7 +382,7 @@ else
     PEM_END_CERT="$(tail "${TMP}"/ee.pem -n 1)"
 
     # get number of certificates in the bundle file
-    NUM_OF_CERTS=$(cat "${CERT}" | grep -ce "$PEM_BEGIN_CERT")
+    NUM_OF_CERTS=$(grep -ce "$PEM_BEGIN_CERT" < "${CERT}")
 
     # shellcheck disable=SC2086
     if [ $NUM_OF_CERTS -le 1 ]; then
@@ -475,8 +475,7 @@ fi
 if [ $VERIFY -eq 1 ]; then
     Debug "OCSP response verification results: $(cat "${TMP}"/ocsp-verify.txt)"
 
-    if ! cat "${TMP}"/ocsp-verify.txt |
-            grep "Response verify OK" &>>"${TMP}"/log ; then
+    if ! grep < "${TMP}"/ocsp-verify.txt "Response verify OK" &>>"${TMP}"/log ; then
         if grep "signer certificate not found" \
                 "${TMP}"/ocsp-verify.txt &>/dev/null ; then
             Error 4 "OCSP response verification failure: signer certificate not found; try with '--VAfile -' or '--VAfile OCSP-response-signing-certificate-file' arguments"
@@ -489,7 +488,7 @@ fi
 Debug "OCSP response: $(cat "${TMP}"/ocsp.txt)"
 
 if [ $GOOD_ONLY -eq 1 ]; then
-    if ! cat "${TMP}"/ocsp.txt | head -n 1 | grep ": good" &>>"${TMP}"/log ; then
+    if ! head -n 1 "${TMP}"/ocsp.txt | grep ": good" &>>"${TMP}"/log ; then
         Error 4 "OCSP response, certificate status not good"
     fi
 fi
