@@ -35,13 +35,12 @@ PARTIAL_CHAIN=""
 
 function Quit() {
     local -i err=$1
-    if [ $KEEP_TEMP -eq 0 ]; then
+    if [ "$KEEP_TEMP" -eq 0 ]; then
         if [ -n "${TMP}" ]; then
             rm -r "${TMP}" &>/dev/null
         fi
     fi
-    # shellcheck disable=SC2086
-    exit ${err}
+    exit "${err}"
 }
 
 function LogError() {
@@ -59,8 +58,7 @@ function LogError() {
 function Error() {
     local -i err=$1
 
-    # shellcheck disable=SC2086
-    if [ ${err} -eq 9 ]; then
+    if [ "${err}" -eq 9 ]; then
         MSG="Error: $2"
     else
         MSG="Error processing '${CERT}': $2"
@@ -68,13 +66,11 @@ function Error() {
 
     LogError "$MSG"
 
-    # shellcheck disable=SC2086
-    if [ ${err} -eq 9 ]; then
+    if [ "${err}" -eq 9 ]; then
         echo "Run $PROGNAME -h for help" >&2
     fi
 
-    # shellcheck disable=SC2086
-    Quit ${err}
+    Quit "${err}"
 }
 
 function Debug() {
@@ -179,7 +175,7 @@ Options:
 
 trap Trap INT TERM
 
-TMP="$(mktemp -d -q -t $PROGNAME.XXXXXXXXXX)"
+TMP="$(mktemp -d -q -t "$PROGNAME.XXXXXXXXXX")"
 
 # COMMAND LINE PROCESSING
 # ----------------------------------
@@ -384,8 +380,7 @@ else
     # get number of certificates in the bundle file
     NUM_OF_CERTS=$(grep -ce "$PEM_BEGIN_CERT" < "${CERT}")
 
-    # shellcheck disable=SC2086
-    if [ $NUM_OF_CERTS -le 1 ]; then
+    if [ "$NUM_OF_CERTS" -le 1 ]; then
         Error 3 "can't obtain the number of certificates in the chain"
     fi
 
@@ -399,8 +394,7 @@ else
 
     # for each certificate that is extracted from the bundle check if 
     # it's the EE certificate, otherwise uses it to build the chain file
-    # shellcheck disable=SC2086
-    for c in $(seq 1 $NUM_OF_CERTS);
+    for c in $(seq 1 "$NUM_OF_CERTS");
     do
         # check fingerprint of current and EE certificates
         if ! FP=$($OPENSSL_BIN x509 -fingerprint -noout -in "${TMP}"/chain-"${c}".pem) ||
@@ -457,7 +451,7 @@ fi
 
 # process the OCSP response
 VERIFYOPT=""
-if [ $VERIFY -eq 0 ]; then
+if [ "$VERIFY" -eq 0 ]; then
     VERIFYOPT="-noverify"
 fi
 typeset -a vaarg=()
@@ -472,7 +466,7 @@ if ! $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem \
     Error 1 "can't receive OCSP response"
 fi
 
-if [ $VERIFY -eq 1 ]; then
+if [ "$VERIFY" -eq 1 ]; then
     Debug "OCSP response verification results: $(cat "${TMP}"/ocsp-verify.txt)"
 
     if ! grep < "${TMP}"/ocsp-verify.txt "Response verify OK" &>>"${TMP}"/log ; then
@@ -487,7 +481,7 @@ fi
 
 Debug "OCSP response: $(cat "${TMP}"/ocsp.txt)"
 
-if [ $GOOD_ONLY -eq 1 ]; then
+if [ "$GOOD_ONLY" -eq 1 ]; then
     if ! head -n 1 "${TMP}"/ocsp.txt | grep ": good" &>>"${TMP}"/log ; then
         Error 4 "OCSP response, certificate status not good"
     fi
@@ -503,7 +497,7 @@ fi
 #   - the OCSP response has been verified against the chain or 
 #       the --VAfile
 
-if [ ${DEBUG} -eq 0 ]; then
+if [ "${DEBUG}" -eq 0 ]; then
     # update .ocsp and .issuer files
 
     if ! cp "${TMP}"/ocsp.der "${CERT}".ocsp &>>"${TMP}"/log ; then
@@ -516,8 +510,8 @@ if [ ${DEBUG} -eq 0 ]; then
         fi
     fi
 
-    if [ $SKIP_UPDATE -eq 0 ]; then
-        if [ $ISNEW -eq 1 ]; then
+    if [ "$SKIP_UPDATE" -eq 0 ]; then
+        if [ "$ISNEW" -eq 1 ]; then
             # no .ocsp file found, maybe it's an initial run
             Debug "Reloading haproxy."
 
