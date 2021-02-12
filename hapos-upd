@@ -435,25 +435,23 @@ fi
 
 OPENSSL_VERSION=$($OPENSSL_BIN version | sed -rn 's/^OpenSSL\s([0-9]\.[0-9]).*/\1/p')
 
+typeset -a hdr
 case $OPENSSL_VERSION in
-        '0.9')
-                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
-                        -respout "${TMP}"/ocsp.der -noverify \
-                        -no_nonce -url "${OCSP_URL}" -header "Host=$OCSP_HOST" &>>"${TMP}"/log
-                ;;
-        '1.0')
-                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
-                        -respout "${TMP}"/ocsp.der -noverify \
-                        -no_nonce -url "${OCSP_URL}" -header "Host" "$OCSP_HOST" &>>"${TMP}"/log
-                ;;
-        *)
-                $OPENSSL_BIN ocsp $PARTIAL_CHAIN -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
-                        -respout "${TMP}"/ocsp.der -noverify \
-                        -no_nonce -url "${OCSP_URL}" &>>"${TMP}"/log
-                ;;
+    '0.9')
+        hdr=(-header "Host=$OCSP_HOST")
+        ;;
+    '1.0')
+        hdr=(-header "Host" "$OCSP_HOST")
+        ;;
+    *)
+        hdr=()
+        ;;
 esac
 
-if [ $? -ne 0 ]; then
+if ! $OPENSSL_BIN ocsp $PARTIAL_CHAIN \
+     -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+     -respout "${TMP}"/ocsp.der -noverify \
+     -no_nonce -url "${OCSP_URL}" "${hdr[@]}" &>>"${TMP}"/log ; then
     Error 1 "can't receive the OCSP server response"
 fi
 
