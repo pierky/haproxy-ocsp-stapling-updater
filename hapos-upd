@@ -341,13 +341,13 @@ else
 fi
 
 # check OCSP server URL format (http:// or https://)
-if ! echo "${OCSP_URL}" | egrep -i "(http://|https://)" &>/dev/null ; then
+if ! echo "${OCSP_URL}" | grep -Ei "(http://|https://)" &>/dev/null ; then
     Error 3 "OCSP server URL not in http[s]:// format"
 fi
 
 # get OCSP server URL host name
 if [ -z "$OCSP_HOST" ]; then
-    if ! OCSP_HOST="$(echo "${OCSP_URL}" | egrep -i "(http://|https://)" | cut -d'/' -f 3)" ; then
+    if ! OCSP_HOST="$(echo "${OCSP_URL}" | grep -Ei "(http://|https://)" | cut -d'/' -f 3)" ; then
         Error 3 "can't extract hostname from OCSP server URL ${OCSP_URL}"
     fi
 
