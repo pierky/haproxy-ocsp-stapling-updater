@@ -460,18 +460,15 @@ VERIFYOPT=""
 if [ $VERIFY -eq 0 ]; then
     VERIFYOPT="-noverify"
 fi
-if [ -z "${VAFILE}" ]; then
-    $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
-        -respin "${TMP}"/ocsp.der -no_nonce -CAfile "${TMP}"/chain.pem \
-        -out "${TMP}"/ocsp.txt &>>"${TMP}"/ocsp-verify.txt
-else
-    $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
-        -respin "${TMP}"/ocsp.der -no_nonce -CAfile "${TMP}"/chain.pem \
-        -VAfile "${VAFILE}" \
-        -out "${TMP}"/ocsp.txt &>>"${TMP}"/ocsp-verify.txt
+typeset -a vaarg=()
+if [[ -n "${VAFILE}" ]] ; then
+    vaarg=(-VAfile "${VAFILE}")
 fi
 
-if [ $? -ne 0 ]; then
+if ! $OPENSSL_BIN ocsp $PARTIAL_CHAIN $VERIFYOPT -issuer "${TMP}"/chain.pem \
+     -cert "${TMP}"/ee.pem -respin "${TMP}"/ocsp.der -no_nonce \
+     -CAfile "${TMP}"/chain.pem "${vaarg[@]}" \
+     -out "${TMP}"/ocsp.txt &>>"${TMP}"/ocsp-verify.txt ; then
     Error 1 "can't receive OCSP response"
 fi
 
