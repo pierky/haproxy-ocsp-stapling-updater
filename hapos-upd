@@ -7,7 +7,7 @@
 
 set -o nounset
 
-VERSION="0.4.1-pre1"
+VERSION="0.5.0"
 
 PROGNAME="hapos-upd"
 
@@ -378,8 +378,8 @@ else
     Debug "EE certificate's fingerprint: $FP_EE"
 
     # get BEGIN CERTIFICATE and END CERTIFICATE separators
-    PEM_BEGIN_CERT="$(head "${TMP}"/ee.pem -n 1)"
-    PEM_END_CERT="$(tail "${TMP}"/ee.pem -n 1)"
+    PEM_BEGIN_CERT="$(head -n 1 "${TMP}"/ee.pem)"
+    PEM_END_CERT="$(tail -n 1 "${TMP}"/ee.pem)"
 
     # get number of certificates in the bundle file
     NUM_OF_CERTS=$(grep -ce "$PEM_BEGIN_CERT" < "${CERT}")
@@ -528,7 +528,7 @@ if [ ${DEBUG} -eq 0 ]; then
             # update haproxy via local UNIX socket
             Debug "Updating haproxy."
 
-            if ! echo "set ssl ocsp-response $(base64 -w 0 "${TMP}"/ocsp.der)" |
+            if ! echo "set ssl ocsp-response $($OPENSSL_BIN enc -base64 -A -in "$TMP"/ocsp.der)" |
 		    $SOCAT_BIN stdio "${HAPROXY_ADMIN_SOCKET}" &>>"${TMP}"/log ; then
                 Error 5 "can't update haproxy ssl ocsp-response using ${HAPROXY_ADMIN_SOCKET} socket"
             fi
