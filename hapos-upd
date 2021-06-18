@@ -28,6 +28,7 @@ typeset -i NUM_OF_CERTS
 KEEP_TEMP=0
 OCSP_URL=""
 OCSP_HOST=""
+OCSP_PROXY=""
 VERIFY=1
 TMP=""
 SKIP_UPDATE=0
@@ -95,23 +96,23 @@ https://github.com/pierky/haproxy-ocsp-stapling-updater
 Usage:
  $PROGNAME [options] --cert crt_full_path
 
-This script extracts and queries the OCSP server present in a 
+This script extracts and queries the OCSP server present in a
 certificate to obtain its revocation status, then updates HAProxy by
-writing the '.issuer' and the '.ocsp' files and by sending it the 
+writing the '.issuer' and the '.ocsp' files and by sending it the
 'set ssl ocsp-response' command through the local UNIX admin socket.
 
 The crt_full_path argument is the full path to the certificate bundle
-used in haproxy 'crt' setting. End-entity (EE) certificate plus any 
+used in haproxy 'crt' setting. End-entity (EE) certificate plus any
 intermediate CA certificates must be concatenated there.
-An OCSP query is sent to the OCSP server given on the command line 
-(--ocsp-url and --ocsp-host argument); if these arguments are missing, 
-URL and Host header values are automatically extracted from the 
+An OCSP query is sent to the OCSP server given on the command line
+(--ocsp-url and --ocsp-host argument); if these arguments are missing,
+URL and Host header values are automatically extracted from the
 certificate.
-If the '.issuer' file already exists it's used to build the OCSP 
+If the '.issuer' file already exists it's used to build the OCSP
 request, otherwise the chain is extracted from crt_full_path and used
 to identify the issuer.
 Finally, it writes the related '.issuer' and .'ocsp' files and updates
-haproxy, using 'socat' and the local UNIX socket (--socket argument, 
+haproxy, using 'socat' and the local UNIX socket (--socket argument,
 default $HAPROXY_ADMIN_SOCKET_DEFAULT).
 
 Exit codes:
@@ -127,43 +128,46 @@ Options:
 
  -d, --debug           : don't do anything, print debug messages only.
 
-     --keep-temp       : keep temporary directory after exiting (for 
+     --keep-temp       : keep temporary directory after exiting (for
                          debug purposes).
 
- -g, --good-only       : do not update haproxy if OCSP response 
+ -g, --good-only       : do not update haproxy if OCSP response
                          certificate status value is not 'good'.
 
  -l, --syslog priority : log errors to syslog system log module.
-                         The priority may be specified numerically 
-                         or as a facility.level pair (e.g. 
+                         The priority may be specified numerically
+                         or as a facility.level pair (e.g.
                          local7.error).
 
      --ocsp-url url    : OCSP server URL; use this instead of the
                          one in the EE certificate.
 
-     --ocsp-host host  : OCSP server hostname to be used in the 
+     --ocsp-host host  : OCSP server hostname to be used in the
                          'Host:' header; use this instead of the one
                          extracted from the OCSP server URL.
 
-     --partial-chain   : Allow partial certificate chain if at least one certificate 
+     --ocsp-proxy proxy : OCSP server proxy; use this to reach OCSP server
+                         through proxy
+
+     --partial-chain   : Allow partial certificate chain if at least one certificate
                          is in trusted store. Useful when validating an intermediate
                          certificate without the root CA.
-                         
+
  -s, --socket file     : haproxy admin socket. If omitted,
                          $HAPROXY_ADMIN_SOCKET_DEFAULT is used by default.
-                         This script is distributed with only one 
-                         method to update haproxy: using 'socat' 
+                         This script is distributed with only one
+                         method to update haproxy: using 'socat'
                          with a local admin-level UNIX socket.
-                         Feel free to implement other mechanisms as 
-                         needed! The right section in the code is 
+                         Feel free to implement other mechanisms as
+                         needed! The right section in the code is
                          \"UPDATE HAPROXY\", at the end of the script.
- 
- -v, --VAfile file     : same as the openssl ocsp -VAfile option 
-                         with 'file' as argument. For more details: 
+
+ -v, --VAfile file     : same as the openssl ocsp -VAfile option
+                         with 'file' as argument. For more details:
                          'man ocsp'.
-                         If file = \"-\" then the chain extracted 
-                         from the certificate's bundle (or .issuer 
-                         file) is used (useful for OCSP responses 
+                         If file = \"-\" then the chain extracted
+                         from the certificate's bundle (or .issuer
+                         file) is used (useful for OCSP responses
                          that don't include the signer certificate).
 
       --noverify       : Do not verify OCSP response.
@@ -233,6 +237,11 @@ do
             shift
             ;;
 
+        --ocsp-proxy)
+            OCSP_PROXY="$2"
+            shift
+            ;;
+
         -c|--cert)
             if [ $# -le 1 ]; then
                 Error 9 "mandatory value is missing for $1 argument"
@@ -271,7 +280,7 @@ do
         *)
             Error 9 "unknown option: $1"
     esac
-    
+
     shift
 done
 
@@ -352,6 +361,14 @@ else
     Debug "Using OCSP server hostname from command line: $OCSP_HOST"
 fi
 
+# check OCSP server PROXY format (http:// or https://)
+if [ -n "${OCSP_PROXY}" ]; then
+    if ! echo "${OCSP_PROXY}" | grep -Ei "(http://|https://)" &>/dev/null ; then
+        Error 3 "OCSP server PROXY not in http[s]:// format"
+    fi
+    OCSP_URL=${OCSP_PROXY}
+fi
+
 # EXTRACT CHAIN INFO
 # ----------------------------------
 
@@ -392,7 +409,7 @@ else
         Error 3 "can't extract certificates from bundle"
     fi
 
-    # for each certificate that is extracted from the bundle check if 
+    # for each certificate that is extracted from the bundle check if
     # it's the EE certificate, otherwise uses it to build the chain file
     for c in $(seq 1 "$NUM_OF_CERTS");
     do
@@ -494,7 +511,7 @@ fi
 #   - "${TMP}"/ocsp.der contains the OCSP response, DER format
 #   - "${TMP}"/ocsp.txt contains the textual OCSP response as produced
 #       by openssl
-#   - the OCSP response has been verified against the chain or 
+#   - the OCSP response has been verified against the chain or
 #       the --VAfile
 
 if [ "${DEBUG}" -eq 0 ]; then
