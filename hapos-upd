@@ -16,6 +16,7 @@ if [ -z "${OPENSSL_BIN+x}" ]; then
 fi
 
 SOCAT_BIN="socat"
+CURL_BIN="curl"
 
 CERT=""
 VAFILE=""
@@ -33,6 +34,7 @@ VERIFY=1
 TMP=""
 SKIP_UPDATE=0
 PARTIAL_CHAIN=""
+USE_CURL=0
 
 function Quit() {
     local -i err=$1
@@ -149,6 +151,9 @@ Options:
      --ocsp-proxy proxy : OCSP server proxy; use this to reach OCSP server
                          through proxy
 
+     --use-curl        : Uses curl instead of OpenSSL's basic HTTP client.
+                         This is useful for networks with complex proxy setups.
+
      --partial-chain   : Allow partial certificate chain if at least one certificate
                          is in trusted store. Useful when validating an intermediate
                          certificate without the root CA.
@@ -242,6 +247,10 @@ do
             shift
             ;;
 
+        --use-curl)
+            USE_CURL=1
+            ;;
+
         -c|--cert)
             if [ $# -le 1 ]; then
                 Error 9 "mandatory value is missing for $1 argument"
@@ -296,6 +305,12 @@ fi
 
 if [ -z "${CERT}" ]; then
     Error 9 "certificate not provided (--cert argument)"
+fi
+
+if [ "$USE_CURL" -eq 1 ]; then
+  if ! $CURL_BIN -V | grep curl &>>"${TMP}"/log ; then
+      Error 9 "curl binary not found; adjust CURL_BIN variable in the script"
+  fi
 fi
 
 # CURRENT RESPONSE EXPIRED?
@@ -446,24 +461,38 @@ fi
 
 OPENSSL_VERSION=$($OPENSSL_BIN version | sed -rn 's/^OpenSSL\s([0-9]\.[0-9]).*/\1/p')
 
-typeset -a hdr
-case $OPENSSL_VERSION in
-    '0.9')
-        hdr=(-header "Host=$OCSP_HOST")
-        ;;
-    '1.0')
-        hdr=(-header "Host" "$OCSP_HOST")
-        ;;
-    *)
-        hdr=()
-        ;;
-esac
+if [ "$USE_CURL" -eq 0 ]; then
+    typeset -a hdr
+    case $OPENSSL_VERSION in
+        '0.9')
+            hdr=(-header "Host=$OCSP_HOST")
+            ;;
+        '1.0')
+            hdr=(-header "Host" "$OCSP_HOST")
+            ;;
+        *)
+            hdr=()
+            ;;
+    esac
 
-if ! $OPENSSL_BIN ocsp $PARTIAL_CHAIN \
-     -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
-     -respout "${TMP}"/ocsp.der -noverify \
-     -no_nonce -url "${OCSP_URL}" "${hdr[@]}" &>>"${TMP}"/log ; then
-    Error 1 "can't receive the OCSP server response"
+    if ! $OPENSSL_BIN ocsp $PARTIAL_CHAIN \
+         -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+         -respout "${TMP}"/ocsp.der -noverify \
+         -no_nonce -url "${OCSP_URL}" "${hdr[@]}" &>>"${TMP}"/log ; then
+        Error 1 "can't receive the OCSP server response"
+    fi
+else # USE_CURL
+    if ! $OPENSSL_BIN ocsp $PARTIAL_CHAIN \
+         -issuer "${TMP}"/chain.pem -cert "${TMP}"/ee.pem \
+         -reqout "${TMP}"/ocsp.req.der -noverify -no_nonce &>>"${TMP}"/log ; then
+        Error 1 "can't create the OCSP request"
+    fi
+
+    if ! $CURL_BIN --fail-with-body --data-binary @"${TMP}"/ocsp.req.der \
+         --header "Content-Type:application/ocsp-request" \
+         --output "${TMP}"/ocsp.der "${OCSP_URL}" &>>"${TMP}"/log ; then
+        Error 1 "can't receive the OCSP server response"
+    fi
 fi
 
 # process the OCSP response
