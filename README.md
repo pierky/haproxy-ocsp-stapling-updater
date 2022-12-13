@@ -53,6 +53,16 @@ Options:
                          'Host:' header; use this instead of the one
                          extracted from the OCSP server URL.
 
+     --ocsp-proxy proxy : OCSP server proxy; use this to reach OCSP server
+                         through proxy
+
+     --use-curl        : Uses curl instead of OpenSSL's basic HTTP client.
+                         This is useful for networks with complex proxy setups.
+
+     --partial-chain   : Allow partial certificate chain if at least one certificate
+                         is in trusted store. Useful when validating an intermediate
+                         certificate without the root CA.
+
  -s, --socket file     : haproxy admin socket. If omitted,
                          /run/haproxy/admin.sock is used by default.
                          This script is distributed with only one
