@@ -290,8 +290,10 @@ if ! $OPENSSL_BIN version | grep OpenSSL &>>"${TMP}"/log ; then
     Error 9 "openssl binary not found; adjust OPENSSL_BIN variable in the script"
 fi
 
-if ! $SOCAT_BIN -V | grep socat &>>"${TMP}"/log ; then
-    Error 9 "socat binary not found; adjust SOCAT_BIN variable in the script"
+if [ "$SKIP_UPDATE" -eq 0 ]; then
+    if ! $SOCAT_BIN -V | grep socat &>>"${TMP}"/log ; then
+        Error 9 "socat binary not found; adjust SOCAT_BIN variable in the script"
+    fi
 fi
 
 if [ -z "${CERT}" ]; then
